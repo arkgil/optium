@@ -22,6 +22,7 @@ defmodule Optium do
     parsed =
       opts
       |> take_defined_options(metadata)
+      |> add_defaults(metadata)
 
     {:ok, parsed}
   end
@@ -29,17 +30,34 @@ defmodule Optium do
   @spec take_defined_options(opts, Metadata.t) :: opts
   defp take_defined_options(opts, metadata) do
     Enum.reduce(metadata.keys, [], fn key, acc ->
-      take_opt_if_present(key, opts, acc)
+      maybe_take_opt(key, opts, acc)
     end)
   end
 
-  @spec take_opt_if_present(key, opts, acc :: opts) :: acc :: opts
-  defp take_opt_if_present(key, opts, acc) do
+  @spec maybe_take_opt(key, opts, acc :: opts) :: acc :: opts
+  defp maybe_take_opt(key, opts, acc) do
     case Keyword.fetch(opts, key) do
       {:ok, value} ->
         Keyword.put(acc, key, value)
       _ ->
         acc
+    end
+  end
+
+  @spec add_defaults(opts, Metadata.t) :: opts
+  defp add_defaults(opts, metadata) do
+    Enum.reduce(metadata.defaults, opts, fn {key, default}, acc ->
+      maybe_add_default(acc, key, default)
+    end)
+  end
+
+  @spec maybe_add_default(opts, key, default :: term) :: opts
+  defp maybe_add_default(opts, key, default) do
+    case Keyword.fetch(opts, key) do
+      :error ->
+        Keyword.put(opts, key, default)
+      _ ->
+        opts
     end
   end
 

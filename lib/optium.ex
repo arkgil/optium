@@ -1,6 +1,6 @@
 defmodule Optium do
   @moduledoc """
-  Functions for validating optional arguments passed to your functions
+  Functions for validating arguments passed in keyword lists
 
   To validate options with Optium, you need to provide it a option schema.
   Schema is a map or a keyword list describing how each option should be

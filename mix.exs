@@ -4,12 +4,16 @@ defmodule Optium.Mixfile do
   def project do
     [app: :optium,
      version: "0.1.0",
+     name: "Optium",
+     description: "Library for validating arguments passed in keyword lists",
+     source_url: "https://github.com/arkgil/optium",
      elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      deps: deps(),
      dialyzer: dialyzer(),
-     docs: docs()]
+     docs: docs(),
+     package: package()]
   end
 
   def application do
@@ -28,7 +32,13 @@ defmodule Optium.Mixfile do
   end
 
   defp docs do
-    [main: "Readme",
+    [main: "Optium",
      extras: ["README.md": [title: "Optium"]]]
+  end
+
+  defp package do
+    [licenses: ["MIT"],
+     maintainers: ["Arkadiusz Gil"],
+     links: %{"GitHub" => "https://github.com/arkgil/optium"}]
   end
 end

@@ -1,9 +1,10 @@
 # Optium
 
-Tiny library for validating optional arguments passed to your
-Elixir functions (usually as keyword lists)
+Tiny library for validating arguments passed to your Elixir functions in keyword lists
 
 [Take me straight to the installation!](#installation)
+
+[Documentation](https://hexdocs.pm/optium)
 
 ## Rationale
 
@@ -43,6 +44,8 @@ iex> [address: {127, 0, 0, 1}] |> Optium.parse(schema)
 
 And that's it! There is also "bang" version of `parse/2` (`parse!/2`) if you like
 to raise those exceptions :boom:
+
+For more detailed usage instructions, head to the [documentation](https://hexdocs.pm/optium)
 
 ## Installation
 

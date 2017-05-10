@@ -54,7 +54,7 @@ defmodule Optium do
   As mentioned before, `parse/2` returns `{:error, error}` tuple, where `error`
   is a relevant exception struct. All Optium exceptions implement
   `Exception.message/1` callback, so you can use `Exception.message(error)`
-  to provide nice error message to users of your function. `parse!/2` intercepts
+  to provide nice error message to users of your functions. `parse!/2` intercepts
   exception structs and raises them instead of returning.
   """
 
@@ -62,9 +62,9 @@ defmodule Optium do
 
   @type key :: atom
   @type opts :: Keyword.t
-  @type schema :: %{key => key_opts} | [{key, key_opts}]
-  @type key_opts :: [key_opt]
-  @type key_opt :: [{:required, boolean}, {:default, term}]
+  @type schema :: %{key => validation_opts} | [{key, validation_opts}]
+  @type validation_opts :: [validation_opt]
+  @type validation_opt :: [{:required, boolean}, {:default, term}]
   @type error :: OptionMissingError.t
 
   @doc """
@@ -139,7 +139,7 @@ defmodule Optium do
     if Keyword.has_key?(opts, key) do
       check_required_opts(rest, opts)
     else
-      {:error, Optium.OptionMissingError.exception(key)}
+      {:error, Optium.OptionMissingError.exception(key: key)}
     end
   end
   defp check_required_opts([], opts), do: {:ok, opts}
@@ -153,7 +153,7 @@ defmodule Optium do
 
     @type t :: %__MODULE__{key: Optium.key}
 
-    def exception(key) do
+    def exception(key: key) do
       %__MODULE__{key: key}
     end
 

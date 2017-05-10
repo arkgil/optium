@@ -43,4 +43,17 @@ defmodule OptiumTest do
       assert %OptionMissingError{key: :key2} == error
     end
   end
+
+  describe "parse!/2" do
+    test "raises an exception when something goes wrong" do
+      schema = %{key1: [required: true],
+                 key2: [required: true],
+                 key3: []}
+      opts = [key1: 1, key3: 3]
+
+      assert_raise OptionMissingError, fn ->
+        Optium.parse!(opts, schema)
+      end
+    end
+  end
 end

@@ -25,6 +25,17 @@ defmodule Optium do
       |> assert_required_options(metadata)
   end
 
+  @doc """
+  Same as `parse/2`, but raises an exception instead of returning it
+  """
+  @spec parse!(opts, schema) :: opts | no_return
+  def parse!(opts, schema) do
+    case parse(opts, schema) do
+      {:ok, parsed}   -> parsed
+      {:error, error} -> raise error
+    end
+  end
+
   @spec take_defined_options(opts, Metadata.t) :: opts
   defp take_defined_options(opts, metadata) do
     Enum.reduce(metadata.keys, [], fn key, acc ->
@@ -66,7 +77,7 @@ defmodule Optium do
   end
 
   @spec check_required_opts([key], opts)
-  :: {:ok, opts} | {:error, OptionMissingError.t}
+    :: {:ok, opts} | {:error, OptionMissingError.t}
   defp check_required_opts([key | rest], opts) do
     if Keyword.has_key?(opts, key) do
       check_required_opts(rest, opts)

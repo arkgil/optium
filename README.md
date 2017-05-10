@@ -3,17 +3,60 @@
 Tiny library for validating optional arguments passed to your
 Elixir functions (usually as keyword lists)
 
+[Take me straight to the installation!](#installation)
+
 ## Rationale
 
-...
+How many times have you said to yourself: "Eh, I wish I could validate those arguments
+passed in keyword lists using one function, instead of writing that stuff for every project I create.."?
+Even if answer is 0, Optium might be just the thing you need!
+
+I've started developing this library because of the reason above: too many times
+I had to write functions which would validate arguments passed in keyword lists.
+Optium aims to cover this use case using simple and clean API.
+
+## Example
+
+Optium uses so called schema, to determine how keyword list should be "parsed"
+and validated, for example:
+
+```elixir
+%{port:    [required: true],
+  address: [required: true, default: {0, 0, 0, 0}]}
+```
+
+The schema above is quite self-explanatory: `:port` option is required,
+as well as `:address`, but `:address` also has a default value assigned.
+
+After you've created your schema, you can pass it along with some keyword list to
+`Optium.parse/2` or `Optium.parse!/2`, and Optium will validate the keyword list
+and tell you if something went wrong.
+
+```elixir
+iex> [port: 12_345] |> Optium.parse(schema)
+# => {:ok, [port: 12_345, address: {0, 0, 0, 0}]}
+iex> [port: 12_345, address: {127, 0, 0, 1}] |> Optium.parse(schema)
+# => {:ok, [port: 12_345, address: {127, 0, 0, 1}]}
+iex> [address: {127, 0, 0, 1}] |> Optium.parse(schema)
+# => {:error, Optium.OptionMissingError{key: :port}}
+```
+
+And that's it! There is also "bang" version of `parse/2` (`parse!/2`) if you like
+to raise those exceptions :boom:
 
 ## Installation
 
-...
+Just add to your Mix dependencies:
 
-## Usage
+```elixir
+{:optium, "~> 0.1"}
+```
 
-...
+and
+
+```
+$ mix deps.get
+```
 
 ## License
 

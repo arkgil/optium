@@ -19,12 +19,10 @@ defmodule Optium do
   def parse(opts, schema) do
     metadata = Optium.Metadata.from_schema(schema)
 
-    parsed =
       opts
       |> take_defined_options(metadata)
       |> add_defaults(metadata)
-
-    {:ok, parsed}
+      |> assert_required_options(metadata)
   end
 
   @spec take_defined_options(opts, Metadata.t) :: opts
@@ -60,6 +58,23 @@ defmodule Optium do
         opts
     end
   end
+
+  @spec assert_required_options(opts, Metadata.t)
+    :: {:ok, opts} | {:error, OptionMissingError.t}
+  defp assert_required_options(opts, metadata) do
+    check_required_opts(metadata.required |> MapSet.to_list(), opts)
+  end
+
+  @spec check_required_opts([key], opts)
+  :: {:ok, opts} | {:error, OptionMissingError.t}
+  defp check_required_opts([key | rest], opts) do
+    if Keyword.has_key?(opts, key) do
+      check_required_opts(rest, opts)
+    else
+      {:error, Optium.OptionMissingError.exception(key)}
+    end
+  end
+  defp check_required_opts([], opts), do: {:ok, opts}
 
   defmodule OptionMissingError do
     @moduledoc """

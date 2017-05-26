@@ -2,7 +2,7 @@ defmodule OptiumTest do
   use ExUnit.Case
   doctest Optium
 
-  alias Optium.OptionMissingError
+  alias Optium.{OptionMissingError, OptionInvalidError}
 
   describe "parse/2" do
     test "returns only options defined in schema" do
@@ -41,6 +41,31 @@ defmodule OptiumTest do
       assert {:error, error} = Optium.parse(opts, schema)
 
       assert %OptionMissingError{key: :key2} == error
+    end
+
+    test "return {:error, _} tuple in case of invalid option value" do
+      schema = %{key: [validator: &is_binary/1]}
+      opts = [key: 1]
+
+      assert {:error, error} = Optium.parse(opts, schema)
+
+      assert %OptionInvalidError{key: :key} == error
+    end
+
+    test "returns options if values comply to validators" do
+      schema = %{key: [validator: &is_binary/1]}
+      opts = [key: "alicehasacat"]
+
+      assert {:ok, ^opts} = Optium.parse(opts, schema)
+    end
+
+    test "raises ArgumentError if validator doesn't return a boolean" do
+      schema = %{key: [validator: fn _ -> :ok end]}
+      opts = [key: "alicehasacat"]
+
+      assert_raise ArgumentError, fn ->
+        Optium.parse(opts, schema)
+      end
     end
   end
 

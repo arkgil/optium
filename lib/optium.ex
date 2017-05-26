@@ -8,17 +8,19 @@ defmodule Optium do
 
   ## Examples
 
-      %{port: [required: true],
+      %{port: [required: true, validator: &is_integer/1],
         address: [required: true, default: {0, 0, 0, 0}]}
 
   Based on the schema above, Optium knows that `:port` option is required,
   and it  will return an `Optium.OptionMissingError` if it is not provided.
+  It will also check if provided `:port` is an integer, and return
+  `Optium.OptionInvalidError` if it is not.
   `:address` is also required, but by defining a default value you make sure
   that no errors will be returned and that default value will be appended
   to parsed options list instead. Use `Optium.parse/2` to parse and validate
   options:
 
-      iex> schema = %{port:    [required: true],
+      iex> schema = %{port:    [required: true, validator: &is_integer/1],
       ...>            address: [required: true, default: {0, 0, 0, 0}]}
       iex> [port: 12_345, address: {127, 0, 0, 1}] |> Optium.parse(schema)
       {:ok, [port: 12_345, address: {127, 0, 0, 1}]}
@@ -26,11 +28,13 @@ defmodule Optium do
       {:ok, [address: {0, 0, 0, 0}, port: 12_345]}
       iex> [address: {127, 0, 0, 1}] |> Optium.parse(schema)
       {:error, %Optium.OptionMissingError{key: :port}}
+      iex> [port: "12_345"] |> Optium.parse(schema)
+      {:error, %Optium.OptionInvalidError{key: :port}}
 
   There is also `Optium.parse!/2`, which follows Elixir's convention of "bang
   functions" and raises and error instead of returning it.
 
-      iex> schema = %{port:    [required: true],
+      iex> schema = %{port:    [required: true, validator: &is_integer/1],
       ...>            address: [required: true, default: {0, 0, 0, 0}]}
       iex> [address: {127, 0, 0, 1}] |> Optium.parse!(schema)
       ** (Optium.OptionMissingError) option :port is required
@@ -38,11 +42,17 @@ defmodule Optium do
   ## Schema
 
   Schemas are keyword lists or maps with atoms as keys, and validation
-  options lists as values. Currently two validation options are supported:
-  `:required` and `:default`. When option is `:required`, `parse/2` returns
-  `Optium.OptionMissingError` if it is not present in the provided options list.
-  This can be overriden by providing `:default` value, which is put into
-  provided options list if no such option is present.
+  options lists as values.
+
+  Supported validation options:
+  * `:required` - `parse/2` returns `Optium.OptionMissingError` if options
+    is not present in the provided options list.
+  * `:default` - this value will be put into provided options list if the
+    corresponding key is missing. Overrides `:required`.
+  * `:validator` - a function which takes an option's value, and returns
+    `true` if it is valid, or `false` otherwise. If validator returns
+    a non-boolean, `parse/2` will raise `ArgumentError`. `:default`
+    values will be validated too.
 
   Note that returned, validated options list contains only those options which
   keys are present in the schema. You can add an option to schema with empty
@@ -59,13 +69,17 @@ defmodule Optium do
   """
 
   alias Optium.Metadata
+  alias __MODULE__.{OptionMissingError, OptionInvalidError}
 
   @type key :: atom
   @type opts :: Keyword.t
   @type schema :: %{key => validation_opts} | [{key, validation_opts}]
+  @type validator :: (value :: term -> boolean)
   @type validation_opts :: [validation_opt]
-  @type validation_opt :: [{:required, boolean}, {:default, term}]
-  @type error :: OptionMissingError.t
+  @type validation_opt :: {:required, boolean}
+                        | {:default, term}
+                        | {:validator, validator}
+  @type error :: OptionMissingError.t | OptionInvalidError.t
 
   @doc """
   Parses, validates and normalizes options based on passed Optium schema
@@ -76,10 +90,15 @@ defmodule Optium do
   def parse(opts, schema) do
     metadata = Optium.Metadata.from_schema(schema)
 
+    opts =
       opts
       |> take_defined_options(metadata)
       |> add_defaults(metadata)
-      |> assert_required_options(metadata)
+
+    with {:ok, opts} <- assert_required_options(opts, metadata),
+         {:ok, opts} <- validate_options(opts, metadata) do
+      {:ok, opts}
+    end
   end
 
   @doc """
@@ -139,10 +158,41 @@ defmodule Optium do
     if Keyword.has_key?(opts, key) do
       check_required_opts(rest, opts)
     else
-      {:error, Optium.OptionMissingError.exception(key: key)}
+      {:error, OptionMissingError.exception(key: key)}
     end
   end
   defp check_required_opts([], opts), do: {:ok, opts}
+
+  @spec validate_options(opts, Metadata.t)
+    :: {:ok, opts} | {:error, OptionInvalidError.t}
+  defp validate_options(opts, metadata) do
+    ensure_opts_valid(metadata.validators |> Enum.to_list(), opts)
+  end
+
+  @spec ensure_opts_valid([{key, validator}], opts)
+    :: {:ok, opts} | {:error, OptionInvalidError.t}
+  defp ensure_opts_valid([{key, validator} | rest], opts) do
+    with {:ok, value} <- Keyword.fetch(opts, key),
+         :valid       <- run_validator(validator, value) do
+      ensure_opts_valid(rest, opts)
+    else
+      :error ->
+        ensure_opts_valid(rest, opts)
+      :invalid ->
+        {:error, OptionInvalidError.exception(key: key)}
+    end
+  end
+  defp ensure_opts_valid([], opts), do: {:ok, opts}
+
+  @spec run_validator(validator, value :: term) :: :valid | :invalid
+  defp run_validator(validator, value) do
+    case validator.(value) do
+      true  -> :valid
+      false -> :invalid
+      _ ->
+        raise ArgumentError, "Optium validator must return a boolean"
+    end
+  end
 
   defmodule OptionMissingError do
     @moduledoc """
@@ -159,6 +209,24 @@ defmodule Optium do
 
     def message(struct) do
       "option #{inspect struct.key} is required"
+    end
+  end
+
+  defmodule OptionInvalidError do
+    @moduledoc """
+    Raised when option value doesn't comply to given validator function
+    """
+
+    defexception [:key]
+
+    @type t :: %__MODULE__{key: Optium.key}
+
+    def exception(key: key) do
+      %__MODULE__{key: key}
+    end
+
+    def message(struct) do
+      "option #{inspect struct.key} is invalid"
     end
   end
 end

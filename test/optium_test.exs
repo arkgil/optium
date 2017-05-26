@@ -35,12 +35,15 @@ defmodule OptiumTest do
     test "returns {:error, _} tuple in case of missing :required option" do
       schema = %{key1: [required: true],
                  key2: [required: true],
-                 key3: []}
-      opts = [key1: 1, key3: 3]
+                 key3: [required: true]}
+      opts = [key1: 1]
 
       assert {:error, error} = Optium.parse(opts, schema)
 
-      assert %OptionMissingError{key: :key2} == error
+      assert %OptionMissingError{keys: keys} = error
+      assert length(keys) == 2
+      assert :key2 in keys
+      assert :key3 in keys
     end
 
     test "return {:error, _} tuple in case of invalid option value" do
@@ -79,6 +82,22 @@ defmodule OptiumTest do
       assert_raise OptionMissingError, fn ->
         Optium.parse!(opts, schema)
       end
+    end
+  end
+
+  describe "exception messages" do
+    test "singular OptionMissingError" do
+      exception = %OptionMissingError{keys: [:key]}
+
+      assert Exception.message(exception) ==
+        "option :key is required"
+    end
+
+    test "plural OptionMissingError" do
+      exception = %OptionMissingError{keys: [:key1, :key2, :key3]}
+
+      assert Exception.message(exception) ==
+        "options :key2, :key3 and :key1 are required"
     end
   end
 end

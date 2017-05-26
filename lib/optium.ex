@@ -27,7 +27,7 @@ defmodule Optium do
       iex> [port: 12_345] |> Optium.parse(schema)
       {:ok, [address: {0, 0, 0, 0}, port: 12_345]}
       iex> [address: {127, 0, 0, 1}] |> Optium.parse(schema)
-      {:error, %Optium.OptionMissingError{key: :port}}
+      {:error, %Optium.OptionMissingError{keys: [:port]}}
       iex> [port: "12_345"] |> Optium.parse(schema)
       {:error, %Optium.OptionInvalidError{key: :port}}
 
@@ -154,14 +154,22 @@ defmodule Optium do
 
   @spec check_required_opts([key], opts)
     :: {:ok, opts} | {:error, OptionMissingError.t}
-  defp check_required_opts([key | rest], opts) do
-    if Keyword.has_key?(opts, key) do
-      check_required_opts(rest, opts)
-    else
-      {:error, OptionMissingError.exception(key: key)}
-    end
+  @spec check_required_opts([key], opts, missing :: [key])
+    :: {:ok, opts} | {:error, OptionMissingError.t}
+  defp check_required_opts(keys, opts, missing \\ [])
+  defp check_required_opts([key | rest], opts, missing) do
+    missing =
+      if Keyword.has_key?(opts, key) do
+        missing
+      else
+        [key | missing]
+      end
+    check_required_opts(rest, opts, missing)
   end
-  defp check_required_opts([], opts), do: {:ok, opts}
+  defp check_required_opts([], opts, []), do: {:ok, opts}
+  defp check_required_opts([], _, missing) do
+    {:error, OptionMissingError.exception(keys: missing)}
+  end
 
   @spec validate_options(opts, Metadata.t)
     :: {:ok, opts} | {:error, OptionInvalidError.t}
@@ -199,16 +207,34 @@ defmodule Optium do
     Raised when option marked as `:required` is missing from the options list
     """
 
-    defexception [:key]
+    defexception [:keys]
 
-    @type t :: %__MODULE__{key: Optium.key}
+    @type t :: %__MODULE__{keys: [Optium.key, ...]}
 
-    def exception(key: key) do
-      %__MODULE__{key: key}
+    def exception(keys: keys) do
+      %__MODULE__{keys: keys}
     end
 
     def message(struct) do
-      "option #{inspect struct.key} is required"
+      keys = struct.keys
+      case keys do
+        [key] -> singular_msg(key)
+        [_|_] -> plural_msg(keys)
+      end
+    end
+
+    @spec singular_msg(Optium.key) :: String.t
+    defp singular_msg(key), do: "option #{inspect key} is required"
+
+    @spec plural_msg([Optium.keys, ...]) :: String.t
+    defp plural_msg(keys) do
+      [one | many] = keys
+      keys_str =
+        many
+        |> Enum.map(&inspect/1)
+        |> Enum.join(", ")
+        |> Kernel.<>(" and #{inspect one}")
+      "options #{keys_str} are required"
     end
   end
 
@@ -226,7 +252,7 @@ defmodule Optium do
     end
 
     def message(struct) do
-      "option #{inspect struct.key} is invalid"
+      "option #{inspect struct.key} is required"
     end
   end
 end

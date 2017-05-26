@@ -3,7 +3,7 @@ defmodule Optium.Mixfile do
 
   def project do
     [app: :optium,
-     version: "0.1.0",
+     version: "0.2.0",
      name: "Optium",
      description: "Library for validating arguments passed in keyword lists",
      source_url: "https://github.com/arkgil/optium",

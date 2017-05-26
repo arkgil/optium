@@ -22,12 +22,12 @@ Optium uses so called schema, to determine how keyword list should be "parsed"
 and validated, for example:
 
 ```elixir
-%{port:    [required: true],
+%{port:    [required: true, validator: &is_integer/1],
   address: [required: true, default: {0, 0, 0, 0}]}
 ```
 
 The schema above is quite self-explanatory: `:port` option is required,
-as well as `:address`, but `:address` also has a default value assigned.
+and must be an integer. `:address` is required too, but it also has a default value assigned.
 
 After you've created your schema, you can pass it along with some keyword list to
 `Optium.parse/2` or `Optium.parse!/2`, and Optium will validate the keyword list
@@ -39,7 +39,9 @@ iex> [port: 12_345] |> Optium.parse(schema)
 iex> [port: 12_345, address: {127, 0, 0, 1}] |> Optium.parse(schema)
 # => {:ok, [port: 12_345, address: {127, 0, 0, 1}]}
 iex> [address: {127, 0, 0, 1}] |> Optium.parse(schema)
-# => {:error, Optium.OptionMissingError{key: :port}}
+# => {:error, Optium.OptionMissingError{keys: [:port]}}
+iex> [port: "12_345"] |> Optium.parse(schema)
+# => {:error, %Optium.OptionInvalidError{keys: [:port]}}
 ```
 
 And that's it! There is also "bang" version of `parse/2` (`parse!/2`) if you like
@@ -52,7 +54,7 @@ For more detailed usage instructions, head to the [documentation](https://hexdoc
 Just add to your Mix dependencies:
 
 ```elixir
-{:optium, "~> 0.1"}
+{:optium, "~> 0.2"}
 ```
 
 and

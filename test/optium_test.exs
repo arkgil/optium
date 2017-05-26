@@ -52,7 +52,7 @@ defmodule OptiumTest do
 
       assert {:error, error} = Optium.parse(opts, schema)
 
-      assert %OptionInvalidError{key: :key} == error
+      assert %OptionInvalidError{keys: [:key]} == error
     end
 
     test "returns options if values comply to validators" do
@@ -98,6 +98,20 @@ defmodule OptiumTest do
 
       assert Exception.message(exception) ==
         "options :key2, :key3 and :key1 are required"
+    end
+
+    test "singular OptionInvalidError" do
+      exception = %OptionInvalidError{keys: [:key]}
+
+      assert Exception.message(exception) ==
+        "option :key is invalid"
+    end
+
+    test "plural OptionInvalidError" do
+      exception = %OptionInvalidError{keys: [:key1, :key2, :key3]}
+
+      assert Exception.message(exception) ==
+        "options :key2, :key3 and :key1 are invalid"
     end
   end
 end

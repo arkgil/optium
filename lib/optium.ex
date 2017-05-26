@@ -29,7 +29,7 @@ defmodule Optium do
       iex> [address: {127, 0, 0, 1}] |> Optium.parse(schema)
       {:error, %Optium.OptionMissingError{keys: [:port]}}
       iex> [port: "12_345"] |> Optium.parse(schema)
-      {:error, %Optium.OptionInvalidError{key: :port}}
+      {:error, %Optium.OptionInvalidError{keys: [:port]}}
 
   There is also `Optium.parse!/2`, which follows Elixir's convention of "bang
   functions" and raises and error instead of returning it.
@@ -69,7 +69,7 @@ defmodule Optium do
   """
 
   alias Optium.Metadata
-  alias __MODULE__.{OptionMissingError, OptionInvalidError}
+  alias Optium.{OptionMissingError, OptionInvalidError}
 
   @type key :: atom
   @type opts :: Keyword.t
@@ -179,18 +179,25 @@ defmodule Optium do
 
   @spec ensure_opts_valid([{key, validator}], opts)
     :: {:ok, opts} | {:error, OptionInvalidError.t}
-  defp ensure_opts_valid([{key, validator} | rest], opts) do
+  @spec ensure_opts_valid([{key, validator}], opts, invalid :: [key])
+    :: {:ok, opts} | {:error, OptionInvalidError.t}
+  defp ensure_opts_valid(validators, opts, invalid \\ [])
+  defp ensure_opts_valid([{key, validator} | rest], opts, invalid) do
     with {:ok, value} <- Keyword.fetch(opts, key),
          :valid       <- run_validator(validator, value) do
-      ensure_opts_valid(rest, opts)
+      ensure_opts_valid(rest, opts, invalid)
     else
       :error ->
-        ensure_opts_valid(rest, opts)
+        ensure_opts_valid(rest, opts, invalid)
       :invalid ->
-        {:error, OptionInvalidError.exception(key: key)}
+        ensure_opts_valid(rest, opts, [key | invalid])
     end
   end
-  defp ensure_opts_valid([], opts), do: {:ok, opts}
+  defp ensure_opts_valid([], opts, []), do: {:ok, opts}
+  defp ensure_opts_valid([], _, invalid) do
+    {:error, OptionInvalidError.exception(keys: invalid)}
+  end
+
 
   @spec run_validator(validator, value :: term) :: :valid | :invalid
   defp run_validator(validator, value) do
@@ -199,60 +206,6 @@ defmodule Optium do
       false -> :invalid
       _ ->
         raise ArgumentError, "Optium validator must return a boolean"
-    end
-  end
-
-  defmodule OptionMissingError do
-    @moduledoc """
-    Raised when option marked as `:required` is missing from the options list
-    """
-
-    defexception [:keys]
-
-    @type t :: %__MODULE__{keys: [Optium.key, ...]}
-
-    def exception(keys: keys) do
-      %__MODULE__{keys: keys}
-    end
-
-    def message(struct) do
-      keys = struct.keys
-      case keys do
-        [key] -> singular_msg(key)
-        [_|_] -> plural_msg(keys)
-      end
-    end
-
-    @spec singular_msg(Optium.key) :: String.t
-    defp singular_msg(key), do: "option #{inspect key} is required"
-
-    @spec plural_msg([Optium.keys, ...]) :: String.t
-    defp plural_msg(keys) do
-      [one | many] = keys
-      keys_str =
-        many
-        |> Enum.map(&inspect/1)
-        |> Enum.join(", ")
-        |> Kernel.<>(" and #{inspect one}")
-      "options #{keys_str} are required"
-    end
-  end
-
-  defmodule OptionInvalidError do
-    @moduledoc """
-    Raised when option value doesn't comply to given validator function
-    """
-
-    defexception [:key]
-
-    @type t :: %__MODULE__{key: Optium.key}
-
-    def exception(key: key) do
-      %__MODULE__{key: key}
-    end
-
-    def message(struct) do
-      "option #{inspect struct.key} is required"
     end
   end
 end

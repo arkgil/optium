@@ -4,10 +4,6 @@ jobs:
     docker:
       - image: circleci/elixir:1.4.2
 
-    branches:
-      only:
-        - master
-
     working_directory: ~/optium
 
     steps:

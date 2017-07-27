@@ -1,0 +1,20 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/elixir:1.4.2
+
+    branches:
+      only:
+        - master
+
+    working_directory: ~/optium
+
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: mix deps.get
+      - run:
+          name: Run tests
+          command: mix test

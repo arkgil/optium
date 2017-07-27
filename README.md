@@ -2,6 +2,8 @@
 
 Tiny library for validating arguments passed to your Elixir functions in keyword lists
 
+[![CircleCI](https://circleci.com/gh/arkgil/optium.svg?style=svg)](https://circleci.com/gh/arkgil/optium)
+
 [Take me straight to the installation!](#installation)
 
 [Documentation](https://hexdocs.pm/optium)

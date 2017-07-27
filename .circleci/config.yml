@@ -12,6 +12,8 @@ jobs:
 
     steps:
       - checkout
+      - run: mix local.hex --force
+      - run: mix local.rebar --force
       - run:
           name: Install dependencies
           command: mix deps.get

@@ -198,7 +198,6 @@ defmodule Optium do
     {:error, OptionInvalidError.exception(keys: invalid)}
   end
 
-
   @spec run_validator(validator, value :: term) :: :valid | :invalid
   defp run_validator(validator, value) do
     case validator.(value) do

@@ -1,7 +1,7 @@
-defmodule Optium.MetadataTest do
+defmodule Optium.ParserTest do
   use ExUnit.Case
 
-  alias Optium.Metadata
+  alias Optium.Parser
 
   describe "from_schema/1" do
     test "saves all keys in :keys set" do
@@ -10,10 +10,10 @@ defmodule Optium.MetadataTest do
                  key3: []}
       keys = Map.keys(schema)
 
-      metadata = Metadata.from_schema(schema)
+      parser = Parser.from_schema(schema)
 
       for key <- keys do
-        assert MapSet.member?(metadata.keys, key)
+        assert MapSet.member?(parser.keys, key)
       end
     end
 
@@ -24,10 +24,10 @@ defmodule Optium.MetadataTest do
                  key4: [required: true]}
       required_keys = [:key1, :key4]
 
-      metadata = Metadata.from_schema(schema)
+      parser = Parser.from_schema(schema)
 
       for key <- required_keys do
-        assert MapSet.member?(metadata.required, key)
+        assert MapSet.member?(parser.required, key)
       end
     end
 
@@ -36,11 +36,11 @@ defmodule Optium.MetadataTest do
                  key2: [],
                  key3: [default: nil]}
 
-      metadata = Metadata.from_schema(schema)
+      parser = Parser.from_schema(schema)
 
-      assert Map.fetch(metadata.defaults, :key1) == {:ok, 3}
-      assert Map.fetch(metadata.defaults, :key2) == :error
-      assert Map.fetch(metadata.defaults, :key3) == {:ok, nil}
+      assert Map.fetch(parser.defaults, :key1) == {:ok, 3}
+      assert Map.fetch(parser.defaults, :key2) == :error
+      assert Map.fetch(parser.defaults, :key3) == {:ok, nil}
     end
   end
 end

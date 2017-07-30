@@ -70,6 +70,20 @@ defmodule OptiumTest do
         Optium.parse(opts, schema)
       end
     end
+
+    test "accepts a compiled parser" do
+      schema = %{key1: [default: 3],
+                 key2: [default: 4],
+                 key3: []}
+      parser = Optium.compile(schema)
+      opts = [key2: 2]
+
+      {:ok, parsed} = Optium.parse(opts, parser)
+
+      assert Keyword.fetch(parsed, :key1) == {:ok, 3}
+      assert Keyword.fetch(parsed, :key2) == {:ok, 2}
+      assert Keyword.fetch(parsed, :key3) == :error
+    end
   end
 
   describe "parse!/2" do

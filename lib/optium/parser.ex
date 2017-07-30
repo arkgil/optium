@@ -14,7 +14,7 @@ defmodule Optium.Parser do
     Enum.reduce(schema, %__MODULE__{}, &reduce_to_parser/2)
   end
 
-  @spec reduce_to_parser({Optium.key, Optium.key_opts}, t) :: t
+  @spec reduce_to_parser({Optium.key, Optium.validation_opts}, t) :: t
   defp reduce_to_parser({key, opts}, parser)
     when is_atom(key) and is_list(opts) do
     parser

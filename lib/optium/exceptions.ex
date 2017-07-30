@@ -4,7 +4,7 @@ defmodule Optium.Exceptions do
   @spec singular_msg(Optium.key, adj :: String.t) :: String.t
   def singular_msg(key, adj), do: "option #{inspect key} is #{adj}"
 
-  @spec plural_msg([Optium.keys, ...], adj :: String.t) :: String.t
+  @spec plural_msg([Optium.key, ...], adj :: String.t) :: String.t
   def plural_msg(keys, adj) do
     [one | many] = keys
     keys_str =

@@ -47,4 +47,16 @@ defmodule Optium.Parser do
     %__MODULE__{parser | validators: validators}
   end
   defp update_validators(parser, _, :error), do: parser
+
+  defimpl Inspect do
+    import Inspect.Algebra
+
+    def inspect(parser, opts) do
+      keys = parser.keys |> MapSet.to_list()
+
+      surround_many("#Optium.Parser<", keys, ">", opts, fn k, _ ->
+        inspect(k)
+      end)
+    end
+  end
 end

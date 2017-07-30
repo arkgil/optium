@@ -1,4 +1,4 @@
-defmodule Optium.Metadata do
+defmodule Optium.Parser do
   @moduledoc false
 
   defstruct keys: MapSet.new, required: MapSet.new, defaults: %{},
@@ -11,13 +11,13 @@ defmodule Optium.Metadata do
 
   @spec from_schema(Optium.schema) :: t
   def from_schema(schema) do
-    Enum.reduce(schema, %__MODULE__{}, &reduce_to_metadata/2)
+    Enum.reduce(schema, %__MODULE__{}, &reduce_to_parser/2)
   end
 
-  @spec reduce_to_metadata({Optium.key, Optium.key_opts}, t) :: t
-  defp reduce_to_metadata({key, opts}, metadata)
+  @spec reduce_to_parser({Optium.key, Optium.key_opts}, t) :: t
+  defp reduce_to_parser({key, opts}, parser)
     when is_atom(key) and is_list(opts) do
-    metadata
+    parser
     |> update_keys(key)
     |> update_required(key, opts[:required])
     |> update_defaults(key, Keyword.fetch(opts, :default))
@@ -25,26 +25,26 @@ defmodule Optium.Metadata do
   end
 
   @spec update_keys(t, Optium.key) :: t
-  defp update_keys(metadata, key) do
-    %__MODULE__{metadata | keys: MapSet.put(metadata.keys, key)}
+  defp update_keys(parser, key) do
+    %__MODULE__{parser | keys: MapSet.put(parser.keys, key)}
   end
 
   @spec update_required(t, Optium.key, boolean) :: t
-  defp update_required(metadata, key, true) do
-    %__MODULE__{metadata | required: MapSet.put(metadata.required, key)}
+  defp update_required(parser, key, true) do
+    %__MODULE__{parser | required: MapSet.put(parser.required, key)}
   end
-  defp update_required(metadata, _, _), do: metadata
+  defp update_required(parser, _, _), do: parser
 
   @spec update_defaults(t, Optium.key, {:ok, term} | :error) :: t
-  defp update_defaults(metadata, key, {:ok, default}) do
-    %__MODULE__{metadata | defaults: Map.put(metadata.defaults, key, default)}
+  defp update_defaults(parser, key, {:ok, default}) do
+    %__MODULE__{parser | defaults: Map.put(parser.defaults, key, default)}
   end
-  defp update_defaults(metadata, _, :error), do: metadata
+  defp update_defaults(parser, _, :error), do: parser
 
   @spec update_validators(t, Optium.key, {:ok, Optium.validator} | :error) :: t
-  defp update_validators(metadata, key, {:ok, validator}) do
-    validators = Map.put(metadata.validators, key, validator)
-    %__MODULE__{metadata | validators: validators}
+  defp update_validators(parser, key, {:ok, validator}) do
+    validators = Map.put(parser.validators, key, validator)
+    %__MODULE__{parser | validators: validators}
   end
-  defp update_validators(metadata, _, :error), do: metadata
+  defp update_validators(parser, _, :error), do: parser
 end

@@ -59,6 +59,21 @@ defmodule Optium do
   validation options list (like `%{key: []}`), but it doesn't make much sense
   because you most likely want to have some default value anyway.
 
+  ### Schema compilation
+
+  When schema is not constructed dynamically (which I believe is the most
+  common scenario), you can compile it into a parser to avoid unnecessary
+  processing in every call to `parse/2`:
+
+      @schema %{key: [default: 1]}
+      @parser Optium.compile(@schema)
+
+      def my_fun(opts) do
+        opts
+        |> Optium.parse!(@parser)
+        |> do_stuff()
+      end
+
   ## Error handling
 
   As mentioned before, `parse/2` returns `{:error, error}` tuple, where `error`
@@ -68,12 +83,13 @@ defmodule Optium do
   exception structs and raises them instead of returning.
   """
 
-  alias Optium.Metadata
+  alias Optium.Parser
   alias Optium.{OptionMissingError, OptionInvalidError}
 
   @type key :: atom
   @type opts :: Keyword.t
   @type schema :: %{key => validation_opts} | [{key, validation_opts}]
+  @opaque parser :: Optium.Parser.t
   @type validator :: (value :: term -> boolean)
   @type validation_opts :: [validation_opt]
   @type validation_opt :: {:required, boolean}
@@ -82,23 +98,33 @@ defmodule Optium do
   @type error :: OptionMissingError.t | OptionInvalidError.t
 
   @doc """
-  Parses, validates and normalizes options based on passed Optium schema
+  Compiles the schema into a parser
+  """
+  @spec compile(schema) :: parser
+  def compile(schema) do
+    Optium.Parser.from_schema(schema)
+  end
+
+  @doc """
+  Parses, validates and normalizes options using provided parser or schema
 
   See documentation for `Optium` module for more info.
   """
-  @spec parse(opts, schema) :: {:ok, opts} | {:error, error}
-  def parse(opts, schema) do
-    metadata = Optium.Metadata.from_schema(schema)
-
+  @spec parse(opts, parser | schema) :: {:ok, opts} | {:error, error}
+  def parse(opts, %Optium.Parser{} = parser) do
     opts =
       opts
-      |> take_defined_options(metadata)
-      |> add_defaults(metadata)
+      |> take_defined_options(parser)
+      |> add_defaults(parser)
 
-    with {:ok, opts} <- assert_required_options(opts, metadata),
-         {:ok, opts} <- validate_options(opts, metadata) do
+    with {:ok, opts} <- assert_required_options(opts, parser),
+         {:ok, opts} <- validate_options(opts, parser) do
       {:ok, opts}
     end
+  end
+  def parse(opts, schema) do
+    parser = Optium.Parser.from_schema(schema)
+    parse(opts, parser)
   end
 
   @doc """
@@ -112,9 +138,9 @@ defmodule Optium do
     end
   end
 
-  @spec take_defined_options(opts, Metadata.t) :: opts
-  defp take_defined_options(opts, metadata) do
-    Enum.reduce(metadata.keys, [], fn key, acc ->
+  @spec take_defined_options(opts, Parser.t) :: opts
+  defp take_defined_options(opts, parser) do
+    Enum.reduce(parser.keys, [], fn key, acc ->
       maybe_take_opt(key, opts, acc)
     end)
   end
@@ -129,9 +155,9 @@ defmodule Optium do
     end
   end
 
-  @spec add_defaults(opts, Metadata.t) :: opts
-  defp add_defaults(opts, metadata) do
-    Enum.reduce(metadata.defaults, opts, fn {key, default}, acc ->
+  @spec add_defaults(opts, Parser.t) :: opts
+  defp add_defaults(opts, parser) do
+    Enum.reduce(parser.defaults, opts, fn {key, default}, acc ->
       maybe_add_default(acc, key, default)
     end)
   end
@@ -146,10 +172,10 @@ defmodule Optium do
     end
   end
 
-  @spec assert_required_options(opts, Metadata.t)
+  @spec assert_required_options(opts, Parser.t)
     :: {:ok, opts} | {:error, OptionMissingError.t}
-  defp assert_required_options(opts, metadata) do
-    check_required_opts(metadata.required |> MapSet.to_list(), opts)
+  defp assert_required_options(opts, parser) do
+    check_required_opts(parser.required |> MapSet.to_list(), opts)
   end
 
   @spec check_required_opts([key], opts)
@@ -171,10 +197,10 @@ defmodule Optium do
     {:error, OptionMissingError.exception(keys: missing)}
   end
 
-  @spec validate_options(opts, Metadata.t)
+  @spec validate_options(opts, Parser.t)
     :: {:ok, opts} | {:error, OptionInvalidError.t}
-  defp validate_options(opts, metadata) do
-    ensure_opts_valid(metadata.validators |> Enum.to_list(), opts)
+  defp validate_options(opts, parser) do
+    ensure_opts_valid(parser.validators |> Enum.to_list(), opts)
   end
 
   @spec ensure_opts_valid([{key, validator}], opts)
